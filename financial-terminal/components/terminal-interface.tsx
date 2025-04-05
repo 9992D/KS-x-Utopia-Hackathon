@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Terminal } from "lucide-react"
+import { Terminal, X } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 
 const AVAILABLE_TICKERS = ["AAPL", "NVDA", "TSLA", "MSFT", "GOOGL"]
@@ -29,6 +29,20 @@ export default function TerminalInterface() {
   const [output, setOutput] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showTickers, setShowTickers] = useState(false)
+  const [showAnalysts, setShowAnalysts] = useState(false)
+
+  const toggleItem = (item: string, list: string[], setList: (val: string[]) => void) => {
+    if (list.includes(item)) {
+      setList(list.filter(i => i !== item))
+    } else {
+      setList([...list, item])
+    }
+  }
+
+  const removeItem = (item: string, list: string[], setList: (val: string[]) => void) => {
+    setList(list.filter(i => i !== item))
+  }
 
   const runCommand = async () => {
     if (selectedTickers.length === 0) return setError("Please select at least one ticker.")
@@ -64,6 +78,38 @@ export default function TerminalInterface() {
     }
   }
 
+  const PillSelector = ({ label, list, setList, options, toggle }: any) => (
+    <div>
+      <div className="flex flex-wrap gap-2 mb-2">
+        {list.map((item: string) => (
+          <div
+            key={item}
+            className="flex items-center gap-1 bg-green-800 text-black px-2 py-1 rounded-full text-xs font-mono"
+          >
+            {item}
+            <X className="w-3 h-3 cursor-pointer" onClick={() => removeItem(item, list, setList)} />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {options.map((option: string) => (
+          <label
+            key={option}
+            className="cursor-pointer text-sm font-mono text-green-500 bg-black border border-green-700 px-2 py-1 rounded hover:bg-green-900"
+          >
+            <input
+              type="checkbox"
+              checked={list.includes(option)}
+              onChange={() => toggle(option, list, setList)}
+              className="mr-2 accent-green-500"
+            />
+            {option}
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+
   return (
     <div className="max-w-5xl mx-auto flex flex-col gap-6">
       <header className="border-b border-green-700 pb-4">
@@ -90,32 +136,14 @@ export default function TerminalInterface() {
         <AccordionItem value="tickers" className="border-t border-green-700">
           <AccordionTrigger>Select Tickers</AccordionTrigger>
           <AccordionContent>
-            <select
-              multiple
-              value={selectedTickers}
-              onChange={(e) => setSelectedTickers(Array.from(e.target.selectedOptions).map(o => o.value))}
-              className="bg-black border border-green-700 text-green-700 font-mono p-2 rounded w-full h-40"
-            >
-              {AVAILABLE_TICKERS.map(ticker => (
-                <option key={ticker} value={ticker}>{ticker}</option>
-              ))}
-            </select>
+            <PillSelector label="Tickers" list={selectedTickers} setList={setSelectedTickers} options={AVAILABLE_TICKERS} toggle={toggleItem} />
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="analysts" className="border-t border-green-700">
           <AccordionTrigger>Select Analysts</AccordionTrigger>
           <AccordionContent>
-            <select
-              multiple
-              value={selectedAnalysts}
-              onChange={(e) => setSelectedAnalysts(Array.from(e.target.selectedOptions).map(o => o.value))}
-              className="bg-black border border-green-700 text-green-700 font-mono p-2 rounded w-full h-40"
-            >
-              {AVAILABLE_ANALYSTS.map(analyst => (
-                <option key={analyst} value={analyst}>{analyst}</option>
-              ))}
-            </select>
+            <PillSelector label="Analysts" list={selectedAnalysts} setList={setSelectedAnalysts} options={AVAILABLE_ANALYSTS} toggle={toggleItem} />
           </AccordionContent>
         </AccordionItem>
 
@@ -169,7 +197,8 @@ export default function TerminalInterface() {
                 a.click()
                 URL.revokeObjectURL(url)
               }}
-              className="bg-green-800 text-white font-mono px-4 py-2 text-sm">
+              className="bg-green-800 text-white font-mono px-4 py-2 text-sm"
+            >
               Download
             </Button>
           </div>
