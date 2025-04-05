@@ -96,13 +96,23 @@ if __name__ == "__main__":
     parser.add_argument("--start-date", type=str)
     parser.add_argument("--end-date", type=str)
     parser.add_argument("--show-reasoning", action="store_true")
+    parser.add_argument("--analysts", type=str, help="Comma-separated list of analysts", default="")
+    parser.add_argument("--model-name", type=str, help="Name of the LLM model", default="gpt-4o")
+    parser.add_argument("--model-provider", type=str, help="Provider of the LLM model", default="OpenAI")
 
     args = parser.parse_args()
     tickers = [ticker.strip() for ticker in args.tickers.split(",")]
 
-    selected_analysts = ["ben_graham", "bill_ackman", "warren_buffett"]
-    model_name = "mistral-medium"
-    model_provider = "Mistral"
+    # Analystes choisis dynamiquement
+    if args.analysts:
+        selected_analysts = [a.strip() for a in args.analysts.split(",")]
+    else:
+        selected_analysts = ["ben_graham", "bill_ackman", "warren_buffett"]
+
+    # Modèle choisi dynamiquement
+    model_name = args.model_name
+    model_provider = args.model_provider
+
 
     end_date = args.end_date or datetime.now().strftime("%Y-%m-%d")
     if not args.start_date:

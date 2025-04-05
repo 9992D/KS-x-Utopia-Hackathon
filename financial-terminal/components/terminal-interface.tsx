@@ -30,10 +30,6 @@ export default function TerminalInterface() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const toggleItem = (item: string, list: string[], setList: React.Dispatch<React.SetStateAction<string[]>>) => {
-    setList(prev => prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item])
-  }
-
   const runCommand = async () => {
     if (selectedTickers.length === 0) return setError("Please select at least one ticker.")
     if (selectedAnalysts.length === 0) return setError("Please select at least one analyst.")
@@ -94,38 +90,32 @@ export default function TerminalInterface() {
         <AccordionItem value="tickers" className="border-t border-green-700">
           <AccordionTrigger>Select Tickers</AccordionTrigger>
           <AccordionContent>
-            <div className="flex flex-wrap gap-3">
+            <select
+              multiple
+              value={selectedTickers}
+              onChange={(e) => setSelectedTickers(Array.from(e.target.selectedOptions).map(o => o.value))}
+              className="bg-black border border-green-700 text-green-700 font-mono p-2 rounded w-full h-40"
+            >
               {AVAILABLE_TICKERS.map(ticker => (
-                <label key={ticker} className="flex items-center gap-2 text-green-700">
-                  <input
-                    type="checkbox"
-                    checked={selectedTickers.includes(ticker)}
-                    onChange={() => toggleItem(ticker, selectedTickers, setSelectedTickers)}
-                    className="accent-green-700"
-                  />
-                  {ticker}
-                </label>
+                <option key={ticker} value={ticker}>{ticker}</option>
               ))}
-            </div>
+            </select>
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="analysts" className="border-t border-green-700">
           <AccordionTrigger>Select Analysts</AccordionTrigger>
           <AccordionContent>
-            <div className="flex flex-wrap gap-3">
+            <select
+              multiple
+              value={selectedAnalysts}
+              onChange={(e) => setSelectedAnalysts(Array.from(e.target.selectedOptions).map(o => o.value))}
+              className="bg-black border border-green-700 text-green-700 font-mono p-2 rounded w-full h-40"
+            >
               {AVAILABLE_ANALYSTS.map(analyst => (
-                <label key={analyst} className="flex items-center gap-2 text-green-700">
-                  <input
-                    type="checkbox"
-                    checked={selectedAnalysts.includes(analyst)}
-                    onChange={() => toggleItem(analyst, selectedAnalysts, setSelectedAnalysts)}
-                    className="accent-green-700"
-                  />
-                  {analyst}
-                </label>
+                <option key={analyst} value={analyst}>{analyst}</option>
               ))}
-            </div>
+            </select>
           </AccordionContent>
         </AccordionItem>
 
@@ -167,8 +157,21 @@ export default function TerminalInterface() {
 
       {output && (
         <div className="border border-green-700 rounded bg-black">
-          <div className="bg-green-900/30 p-2 border-b border-green-700">
+          <div className="bg-green-900/30 p-2 border-b border-green-700 flex justify-between items-center">
             <h2 className="font-mono font-bold">Analysis Results</h2>
+            <Button
+              onClick={() => {
+                const blob = new Blob([output], { type: "text/plain;charset=utf-8" })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement("a")
+                a.href = url
+                a.download = "ai-analysis.txt"
+                a.click()
+                URL.revokeObjectURL(url)
+              }}
+              className="bg-green-800 text-white font-mono px-4 py-2 text-sm">
+              Download
+            </Button>
           </div>
           <pre className="font-mono text-sm p-4 overflow-auto max-h-[70vh] whitespace-pre-wrap">{output}</pre>
         </div>
