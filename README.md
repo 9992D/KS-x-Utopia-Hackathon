@@ -60,7 +60,7 @@ The project consists of two main components:
 
 ## Production Deployment
 
-The application is designed to be deployed on AWS infrastructure. The backend server will be hosted on an AWS instance rather than localhost:3000.
+The application is designed to be deployed on AWS infrastructure using your own EC2 instances.
 
 ### Environment Variables
 
