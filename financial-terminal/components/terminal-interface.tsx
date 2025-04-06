@@ -120,7 +120,7 @@ export default function TerminalInterface() {
       </header>
 
       <Accordion type="multiple" className="w-full space-y-0">
-        <AccordionItem value="cash" className="border-t border-green-700">
+        <AccordionItem value="cash" className="border-t border-green-700 font-mono">
           <AccordionTrigger>Initial Cash</AccordionTrigger>
           <AccordionContent>
             <input
@@ -133,21 +133,21 @@ export default function TerminalInterface() {
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="tickers" className="border-t border-green-700">
+        <AccordionItem value="tickers" className="border-t border-green-700 font-mono">
           <AccordionTrigger>Select Tickers</AccordionTrigger>
           <AccordionContent>
             <PillSelector label="Tickers" list={selectedTickers} setList={setSelectedTickers} options={AVAILABLE_TICKERS} toggle={toggleItem} />
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="analysts" className="border-t border-green-700">
+        <AccordionItem value="analysts" className="border-t border-green-700 font-mono">
           <AccordionTrigger>Select Analysts</AccordionTrigger>
           <AccordionContent>
             <PillSelector label="Analysts" list={selectedAnalysts} setList={setSelectedAnalysts} options={AVAILABLE_ANALYSTS} toggle={toggleItem} />
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="model" className="border-t border-green-700">
+        <AccordionItem value="model" className="border-t border-green-700 font-mono">
           <AccordionTrigger>Select Model</AccordionTrigger>
           <AccordionContent>
             <select
@@ -187,20 +187,35 @@ export default function TerminalInterface() {
         <div className="border border-green-700 rounded bg-black">
           <div className="bg-green-900/30 p-2 border-b border-green-700 flex justify-between items-center">
             <h2 className="font-mono font-bold">Analysis Results</h2>
+
             <Button
-              onClick={() => {
-                const blob = new Blob([output], { type: "text/plain;charset=utf-8" })
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement("a")
-                a.href = url
-                a.download = "ai-analysis.txt"
-                a.click()
-                URL.revokeObjectURL(url)
+              onClick={async () => {
+                setLoading(true)
+                try {
+                  const res = await fetch("/api/pdf", {
+                    method: "POST",
+                    body: JSON.stringify({ output }),
+                    headers: { "Content-Type": "application/json" }
+                  })
+                  const blob = await res.blob()
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement("a")
+                  a.href = url
+                  a.download = "mistral-report.pdf"
+                  a.click()
+                  URL.revokeObjectURL(url)
+                } catch (err) {
+                  console.error("Download error:", err)
+                } finally {
+                  setLoading(false)
+                }
               }}
               className="bg-green-800 text-white font-mono px-4 py-2 text-sm"
+              disabled={loading}
             >
-              Download
+              {loading ? "Loading..." : "Download PDF"}
             </Button>
+
           </div>
           <pre className="font-mono text-sm p-4 overflow-auto max-h-[70vh] whitespace-pre-wrap">{output}</pre>
         </div>
