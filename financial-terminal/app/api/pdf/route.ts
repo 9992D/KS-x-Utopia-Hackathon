@@ -150,7 +150,11 @@ export async function POST(req: NextRequest) {
           }
         </style>
       </head>
-      <body>${htmlSections.join("\n")}</body>
+      <body>
+      <div class="report-header">
+        <h1>Powered by αThesis.ai</h1>
+      </div>
+      ${htmlSections.join("\n")}</body>
     </html>
   `
   
