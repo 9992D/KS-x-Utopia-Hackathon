@@ -128,7 +128,7 @@ export default function TerminalInterface() {
               value={initialCash}
               onChange={(e) => setInitialCash(e.target.value)}
               placeholder="Initial Cash"
-              className="appearance-none px-4 py-3 rounded bg-zinc-900 border border-green-700 text-green-700 font-mono text-lg w-full"
+              className="appearance-none px-4 py-3 rounded bg-black border border-green-700 text-green-700 font-mono text-lg w-full"
             />
           </AccordionContent>
         </AccordionItem>
