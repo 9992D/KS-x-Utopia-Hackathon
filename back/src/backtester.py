@@ -579,15 +579,6 @@ class Backtester:
         )
         print(f"Total Realized Gains/Losses: {Fore.GREEN if total_realized_gains >= 0 else Fore.RED}${total_realized_gains:,.2f}{Style.RESET_ALL}")
 
-        # Plot the portfolio value over time
-        plt.figure(figsize=(12, 6))
-        plt.plot(performance_df.index, performance_df["Portfolio Value"], color="blue")
-        plt.title("Portfolio Value Over Time")
-        plt.ylabel("Portfolio Value ($)")
-        plt.xlabel("Date")
-        plt.grid(True)
-        plt.show()
-
         # Compute daily returns
         performance_df["Daily Return"] = performance_df["Portfolio Value"].pct_change().fillna(0)
         daily_rf = 0.0434 / 252  # daily risk-free rate
@@ -635,10 +626,12 @@ class Backtester:
         print(f"Win/Loss Ratio: {Fore.GREEN}{win_loss_ratio:.2f}{Style.RESET_ALL}")
 
         # Maximum Consecutive Wins / Losses
-        returns_binary = (performance_df["Daily Return"] > 0).astype(int)
+        returns_binary = performance_df["Daily Return"].apply(lambda r: 1 if r > 0 else (-1 if r < 0 else 0))
+
         if len(returns_binary) > 0:
             max_consecutive_wins = max((len(list(g)) for k, g in itertools.groupby(returns_binary) if k == 1), default=0)
-            max_consecutive_losses = max((len(list(g)) for k, g in itertools.groupby(returns_binary) if k == 0), default=0)
+            max_consecutive_losses = max((len(list(g)) for k, g in itertools.groupby(returns_binary) if k == -1), default=0)
+
         else:
             max_consecutive_wins = 0
             max_consecutive_losses = 0
@@ -652,107 +645,35 @@ class Backtester:
 ### 4. Run the Backtest #####
 if __name__ == "__main__":
     import argparse
+    from main import run_hedge_fund
+    from utils.display import print_backtest_results
 
-    parser = argparse.ArgumentParser(description="Run backtesting simulation")
-    parser.add_argument(
-        "--tickers",
-        type=str,
-        required=False,
-        help="Comma-separated list of stock ticker symbols (e.g., AAPL,MSFT,GOOGL)",
-    )
-    parser.add_argument(
-        "--end-date",
-        type=str,
-        default=datetime.now().strftime("%Y-%m-%d"),
-        help="End date in YYYY-MM-DD format",
-    )
-    parser.add_argument(
-        "--start-date",
-        type=str,
-        default=(datetime.now() - relativedelta(months=1)).strftime("%Y-%m-%d"),
-        help="Start date in YYYY-MM-DD format",
-    )
-    parser.add_argument(
-        "--initial-capital",
-        type=float,
-        default=100000,
-        help="Initial capital amount (default: 100000)",
-    )
-    parser.add_argument(
-        "--margin-requirement",
-        type=float,
-        default=0.0,
-        help="Margin ratio for short positions, e.g. 0.5 for 50% (default: 0.0)",
-    )
+    parser = argparse.ArgumentParser(description="Run a backtest.")
+    parser.add_argument("--ticker", type=str, required=True, help="Comma-separated tickers (e.g. AAPL,NVDA)")
+    parser.add_argument("--start-date", type=str, required=True, help="Backtest start date (YYYY-MM-DD)")
+    parser.add_argument("--end-date", type=str, required=True, help="Backtest end date (YYYY-MM-DD)")
+    parser.add_argument("--initial-cash", type=float, required=True, help="Initial capital for the backtest")
+    parser.add_argument("--model-name", type=str, default="gpt-4o")
+    parser.add_argument("--model-provider", type=str, default="OpenAI")
+    parser.add_argument("--selected-analysts", type=str, default="ben_graham,bill_ackman,warren_buffett")
+    parser.add_argument("--margin-requirement", type=float, default=0.0, help="Short margin requirement (e.g. 0.5 = 50%)")
 
     args = parser.parse_args()
 
-    # Parse tickers from comma-separated string
-    tickers = [ticker.strip() for ticker in args.tickers.split(",")] if args.tickers else []
+    tickers = [t.strip().upper() for t in args.ticker.split(",") if t.strip()]
+    analysts = [a.strip() for a in args.selected_analysts.split(",") if a.strip()]
 
-    # Choose analysts
-    selected_analysts = None
-    choices = questionary.checkbox(
-        "Use the Space bar to select/unselect analysts.",
-        choices=[questionary.Choice(display, value=value) for display, value in ANALYST_ORDER],
-        instruction="\n\nPress 'a' to toggle all.\n\nPress Enter when done to run the hedge fund.",
-        validate=lambda x: len(x) > 0 or "You must select at least one analyst.",
-        style=questionary.Style(
-            [
-                ("checkbox-selected", "fg:green"),
-                ("selected", "fg:green noinherit"),
-                ("highlighted", "noinherit"),
-                ("pointer", "noinherit"),
-            ]
-        ),
-    ).ask()
-
-    if not choices:
-        print("\n\nInterrupt received. Exiting...")
-        sys.exit(0)
-    else:
-        selected_analysts = choices
-        print(
-            f"\nSelected analysts: "
-            f"{', '.join(Fore.GREEN + choice.title().replace('_', ' ') + Style.RESET_ALL for choice in choices)}"
-        )
-
-    # Select LLM model
-    model_choice = questionary.select(
-        "Select your LLM model:",
-        choices=[questionary.Choice(display, value=value) for display, value, _ in LLM_ORDER],
-        style=questionary.Style([
-            ("selected", "fg:green bold"),
-            ("pointer", "fg:green bold"),
-            ("highlighted", "fg:green"),
-            ("answer", "fg:green bold"),
-        ])
-    ).ask()
-
-    if not model_choice:
-        print("\n\nInterrupt received. Exiting...")
-        sys.exit(0)
-    else:
-        model_info = get_model_info(model_choice)
-        if model_info:
-            model_provider = model_info.provider.value
-            print(f"\nSelected {Fore.CYAN}{model_provider}{Style.RESET_ALL} model: {Fore.GREEN + Style.BRIGHT}{model_choice}{Style.RESET_ALL}\n")
-        else:
-            model_provider = "Unknown"
-            print(f"\nSelected model: {Fore.GREEN + Style.BRIGHT}{model_choice}{Style.RESET_ALL}\n")
-
-    # Create and run the backtester
     backtester = Backtester(
         agent=run_hedge_fund,
         tickers=tickers,
         start_date=args.start_date,
         end_date=args.end_date,
-        initial_capital=args.initial_capital,
-        model_name=model_choice,
-        model_provider=model_provider,
-        selected_analysts=selected_analysts,
+        initial_capital=args.initial_cash,
+        model_name=args.model_name,
+        model_provider=args.model_provider,
+        selected_analysts=analysts,
         initial_margin_requirement=args.margin_requirement,
     )
 
-    performance_metrics = backtester.run_backtest()
-    performance_df = backtester.analyze_performance()
+    backtester.run_backtest()
+    backtester.analyze_performance()

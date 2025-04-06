@@ -22,7 +22,10 @@ const AVAILABLE_MODELS = [
 ]
 
 export default function TerminalInterface() {
+  const [mode, setMode] = useState("daily")
   const [initialCash, setInitialCash] = useState("1000")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
   const [selectedTickers, setSelectedTickers] = useState<string[]>(["AAPL", "NVDA"])
   const [selectedAnalysts, setSelectedAnalysts] = useState<string[]>(["Ben Graham", "Bill Ackman"])
   const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0])
@@ -53,23 +56,23 @@ export default function TerminalInterface() {
     setOutput(null)
 
     try {
-      const response = await fetch(
-        `http://127.0.0.1:8000/run?ticker=${encodeURIComponent(selectedTickers.join(","))}&initial_cash=${encodeURIComponent(initialCash)}&selected_analysts=${encodeURIComponent(selectedAnalysts.map(a => a.toLowerCase().replace(/\s+/g, "_")).join(","))}&model_name=${encodeURIComponent(selectedModel.model)}&model_provider=${encodeURIComponent(selectedModel.provider)}`,
-        { method: "POST" }
-      )
-
-      const text = await response.text()
-      let data
-      try {
-        data = JSON.parse(text)
-      } catch {
-        throw new Error("Invalid JSON received from server.")
+      const endpoint = mode === "backtest" ? "/backtest" : "/run"
+      let url = `http://127.0.0.1:8000${endpoint}?ticker=${encodeURIComponent(selectedTickers.join(","))}`
+      url += `&initial_cash=${encodeURIComponent(initialCash)}`
+      url += `&selected_analysts=${encodeURIComponent(selectedAnalysts.map(a => a.toLowerCase().replace(/\s+/g, "_")).join(","))}`
+      url += `&model_name=${encodeURIComponent(selectedModel.model)}&model_provider=${encodeURIComponent(selectedModel.provider)}`
+      if (mode === "backtest") {
+        url += `&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`
       }
+
+      const response = await fetch(url, { method: "POST" })
+      const text = await response.text()
+      const data = JSON.parse(text)
 
       if (data.returncode !== 0 || data.stderr) {
         setError(data.stderr || "The command failed with a non-zero exit code.")
       } else {
-        setOutput(data.stdout || "No output received.")
+        setOutput(data.stdout || data.result || "No output received.")
       }
     } catch (err: any) {
       setError(`Load failed: ${err.message}`)
@@ -118,6 +121,41 @@ export default function TerminalInterface() {
           αThesis.ai
         </h1>
       </header>
+
+      <div className="flex flex-col gap-2">
+        <label className="font-mono text-sm text-green-400">Mode</label>
+        <select
+          value={mode}
+          onChange={(e) => setMode(e.target.value)}
+          className="appearance-none font-mono text-sm bg-black text-green-700 border border-green-700 rounded px-4 py-2 w-full"
+        >
+          <option value="daily">Daily Analysis</option>
+          <option value="backtest">Backtesting</option>
+        </select>
+      </div>
+
+      {mode === "backtest" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="font-mono text-sm text-green-400">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="appearance-none px-4 py-2 rounded bg-black border border-green-700 text-green-700 font-mono text-sm w-full"
+            />
+          </div>
+          <div>
+            <label className="font-mono text-sm text-green-400">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="appearance-none px-4 py-2 rounded bg-black border border-green-700 text-green-700 font-mono text-sm w-full"
+            />
+          </div>
+        </div>
+      )}
 
       <Accordion type="multiple" className="w-full space-y-0">
         <AccordionItem value="cash" className="border-t border-green-700 font-mono">
@@ -172,7 +210,7 @@ export default function TerminalInterface() {
           disabled={loading}
           className="bg-green-700 text-white font-mono px-8 py-4 text-lg"
         >
-          {loading ? "Processing..." : "Run Analysis"}
+          {loading ? "Processing..." : mode === "backtest" ? "Run Backtest" : "Run Analysis"}
         </Button>
       </div>
 
@@ -187,7 +225,6 @@ export default function TerminalInterface() {
         <div className="border border-green-700 rounded bg-black">
           <div className="bg-green-900/30 p-2 border-b border-green-700 flex justify-between items-center">
             <h2 className="font-mono font-bold">Analysis Results</h2>
-
             <Button
               onClick={async () => {
                 setLoading(true)
@@ -215,7 +252,6 @@ export default function TerminalInterface() {
             >
               {loading ? "Loading..." : "Download PDF"}
             </Button>
-
           </div>
           <pre className="font-mono text-sm p-4 overflow-auto max-h-[70vh] whitespace-pre-wrap">{output}</pre>
         </div>
