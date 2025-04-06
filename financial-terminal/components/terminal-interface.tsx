@@ -57,7 +57,7 @@ export default function TerminalInterface() {
 
     try {
       const endpoint = mode === "backtest" ? "/backtest" : "/run"
-      let url = `35.162.125.32:8000${endpoint}?ticker=${encodeURIComponent(selectedTickers.join(","))}`
+      let url = `http://127.0.0.1:8000${endpoint}?ticker=${encodeURIComponent(selectedTickers.join(","))}`
       url += `&initial_cash=${encodeURIComponent(initialCash)}`
       url += `&selected_analysts=${encodeURIComponent(selectedAnalysts.map(a => a.toLowerCase().replace(/\s+/g, "_")).join(","))}`
       url += `&model_name=${encodeURIComponent(selectedModel.model)}&model_provider=${encodeURIComponent(selectedModel.provider)}`
